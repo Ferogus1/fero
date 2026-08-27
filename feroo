@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 local localPlayer = Players.LocalPlayer
 local enabled = false
 local cooldown = false
+local teleportCount = 0 -- Işınlanma sayacımız
 
 -- Ayarlar
 local DETECTION_DISTANCE = 5        -- Algılama mesafesi (5 stud)
@@ -51,6 +52,7 @@ textButton.MouseButton1Click:Connect(function()
     else
         textButton.Text = "Running: OFF"
         textButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+        teleportCount = 0 -- Kapatıldığında sayacı sıfırla
     end
 end)
 
@@ -96,6 +98,16 @@ RunService.Heartbeat:Connect(function()
                 local distance = (hrp.Position - otherHrp.Position).Magnitude
 
                 if distance <= DETECTION_DISTANCE then
+                    teleportCount = teleportCount + 1
+                    
+                    -- Her 15. ışınlanmada işlemi iptal et ama cooldown uygula ki ard arda spam yapmasın
+                    if teleportCount % 15 == 0 then
+                        cooldown = true
+                        task.wait(COOLDOWN_TIME)
+                        cooldown = false
+                        break
+                    end
+
                     cooldown = true
 
                     local oldPosition = hrp.Position
