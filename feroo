@@ -7,7 +7,8 @@ local enabled = false
 local cooldown = false
 
 -- Ayarlar
-local DETECTION_DISTANCE = 5        -- Algılama mesafesi (stud)
+local DETECTION_DISTANCE = 8
+-- Algılama mesafesi (stud)
 local TELEPORT_DISTANCE = 5         -- Işınlanma mesafesi (stud)
 
 -- 1. Arayüzü (GUI) Oluşturma
@@ -34,7 +35,7 @@ textButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0) -- Başlangıç: Kırmı
 textButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 textButton.TextSize = 16
 textButton.Font = Enum.Font.SourceSansBold
-textButton.Text = "Koruma: KAPALI"
+textButton.Text = "running: no"
 textButton.Parent = screenGui
 
 -- Butona şık köşe verme
@@ -46,7 +47,7 @@ uiCorner.Parent = textButton
 textButton.MouseButton1Click:Connect(function()
     enabled = not enabled
     if enabled then
-        textButton.Text = "Koruma: AÇIK"
+        textButton.Text = "running yes"
         textButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Yeşil (Açık)
     else
         textButton.Text = "Koruma: KAPALI"
@@ -80,7 +81,7 @@ RunService.Heartbeat:Connect(function()
                     -- Işınlanmayı gerçekleştir
                     hrp.CFrame = hrp.CFrame + (awayDirection * TELEPORT_DISTANCE)
 
-                    task.wait(0.15)
+                    task.wait(0.01)
                     cooldown = false
                     break
                 end
