@@ -7,9 +7,8 @@ local enabled = false
 local cooldown = false
 
 -- Ayarlar
-local DETECTION_DISTANCE = 8
--- Algılama mesafesi (stud)
-local TELEPORT_DISTANCE = 5         -- Işınlanma mesafesi (stud)
+local DETECTION_DISTANCE = 5        -- Algılama mesafesi (stud)
+local TELEPORT_DISTANCE = 5         -- Rakibin arkasına geçme mesafesi (stud)
 
 -- 1. Arayüzü (GUI) Oluşturma
 local guiParent = CoreGui
@@ -17,7 +16,6 @@ if not pcall(function() return CoreGui:GetChildren() end) then
     guiParent = localPlayer:WaitForChild("PlayerGui")
 end
 
--- Eski GUI varsa temizle
 if guiParent:FindFirstChild("DeltaMobileGui") then
     guiParent.DeltaMobileGui:Destroy()
 end
@@ -30,32 +28,31 @@ screenGui.Parent = guiParent
 local textButton = Instance.new("TextButton")
 textButton.Name = "ToggleButton"
 textButton.Size = UDim2.new(0, 130, 0, 50)
-textButton.Position = UDim2.new(0.75, 0, 0.15, 0) -- Ekranın sağ üst kısmı
-textButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0) -- Başlangıç: Kırmızı (Kapalı)
+textButton.Position = UDim2.new(0.75, 0, 0.15, 0)
+textButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 textButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 textButton.TextSize = 16
 textButton.Font = Enum.Font.SourceSansBold
-textButton.Text = "running: no"
+textButton.Text = "Koruma: KAPALI"
 textButton.Parent = screenGui
 
--- Butona şık köşe verme
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 12)
 uiCorner.Parent = textButton
 
--- 2. Butona Tıklama Olayı (Aç/Kapat)
+-- Butona Tıklama Olayı
 textButton.MouseButton1Click:Connect(function()
     enabled = not enabled
     if enabled then
-        textButton.Text = "running yes"
-        textButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Yeşil (Açık)
+        textButton.Text = "Koruma: AÇIK"
+        textButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
     else
         textButton.Text = "Koruma: KAPALI"
-        textButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0) -- Kırmızı (Kapalı)
+        textButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
     end
 end)
 
--- 3. Ana Döngü (Mesafe Kontrolü ve Işınlanma)
+-- 2. Ana Döngü (Işınlanma ve Açı Ayarı)
 RunService.Heartbeat:Connect(function()
     if not enabled or cooldown then return end
 
@@ -72,16 +69,16 @@ RunService.Heartbeat:Connect(function()
                 if distance <= DETECTION_DISTANCE then
                     cooldown = true
 
-                    -- Yaklaşan oyuncunun ters yönünü hesapla
-                    local awayDirection = (hrp.Position - otherHrp.Position).Unit
-                    if awayDirection ~= awayDirection or awayDirection.Magnitude == 0 then
-                        awayDirection = -hrp.CFrame.LookVector
-                    end
+                    -- A. Eski durduğun konumu kaydet
+                    local oldPosition = hrp.Position
 
-                    -- Işınlanmayı gerçekleştir
-                    hrp.CFrame = hrp.CFrame + (awayDirection * TELEPORT_DISTANCE)
+                    -- B. Sana doğru gelen oyuncunun arkasındaki konumu hesapla
+                    local targetPosition = otherHrp.Position - (otherHrp.CFrame.LookVector * TELEPORT_DISTANCE)
 
-                    task.wait(0.01)
+                    -- C. Yeni konuma ışınlan ve YÜZÜNÜ ESKİ KONUMUNA ÇEVİR
+                    hrp.CFrame = CFrame.lookAt(targetPosition, oldPosition)
+
+                    task.wait(0.2)
                     cooldown = false
                     break
                 end
