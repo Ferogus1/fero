@@ -8,9 +8,9 @@ local enabled = false
 local cooldown = false
 
 -- Ayarlar
-local DETECTION_DISTANCE = 7        -- Algılama mesafesi (stud)
-local TELEPORT_DISTANCE = 7         -- Hedef ışınlanma mesafesi (stud)
-local COOLDOWN_TIME = 0.01          -- Bekleme süresi (saniye)
+local DETECTION_DISTANCE = 5        -- Algılama mesafesi (5 stud)
+local TELEPORT_DISTANCE = 5         -- Hedef ışınlanma mesafesi (5 stud)
+local COOLDOWN_TIME = 0.04          -- Bekleme süresi (0.04 saniye)
 
 -- 1. Arayüzü (GUI) Oluşturma
 local guiParent = CoreGui
@@ -70,6 +70,16 @@ local function getSafePosition(startPos, targetPos, ignoreList)
     return targetPos
 end
 
+-- Tüm Parçalardaki Fiziksel Momentumu Sıfırlama (Fling Önleyici)
+local function clearPhysics(character)
+    for _, part in ipairs(character:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.AssemblyLinearVelocity = Vector3.zero
+            part.AssemblyAngularVelocity = Vector3.zero
+        end
+    end
+end
+
 -- 2. Ana Döngü
 RunService.Heartbeat:Connect(function()
     if not enabled or cooldown then return end
@@ -93,9 +103,16 @@ RunService.Heartbeat:Connect(function()
                     local ignoreList = {char, player.Character}
                     local finalPosition = getSafePosition(oldPosition, desiredPosition, ignoreList)
 
+                    -- Işınlanmadan ÖNCE tüm fiziksel momentumu sıfırla
+                    clearPhysics(char)
+
+                    -- Karakteri taşı ve bakış açısını eski konumuna kilitle
                     hrp.CFrame = CFrame.lookAt(finalPosition, oldPosition)
 
-                    task.wait(COOLDOWN_TIME) -- 0.01 saniye bekleme
+                    -- Işınlandıktan SONRA da sıfırla
+                    clearPhysics(char)
+
+                    task.wait(COOLDOWN_TIME)
                     cooldown = false
                     break
                 end
