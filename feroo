@@ -10,7 +10,7 @@ local cooldown = false
 -- Ayarlar
 local DETECTION_DISTANCE = 5        -- Algılama mesafesi (5 stud)
 local TELEPORT_DISTANCE = 5         -- Hedef ışınlanma mesafesi (5 stud)
-local COOLDOWN_TIME = 0.04          -- Bekleme süresi (0.04 saniye)
+local COOLDOWN_TIME = 0.04          -- Bekleme süresi
 
 -- 1. Arayüzü (GUI) Oluşturma
 local guiParent = CoreGui
@@ -35,20 +35,21 @@ textButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 textButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 textButton.TextSize = 16
 textButton.Font = Enum.Font.SourceSansBold
-textButton.Text = "Koruma: KAPALI"
+textButton.Text = "Running: OFF"
 textButton.Parent = screenGui
 
 local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 12)
 uiCorner.Parent = textButton
 
+-- Buton Mantığı (Running ON / OFF)
 textButton.MouseButton1Click:Connect(function()
     enabled = not enabled
     if enabled then
-        textButton.Text = "Koruma: AÇIK"
+        textButton.Text = "Running: ON"
         textButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
     else
-        textButton.Text = "Koruma: KAPALI"
+        textButton.Text = "Running: OFF"
         textButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
     end
 end)
@@ -70,7 +71,7 @@ local function getSafePosition(startPos, targetPos, ignoreList)
     return targetPos
 end
 
--- Tüm Parçalardaki Fiziksel Momentumu Sıfırlama (Fling Önleyici)
+-- Tüm Parçalardaki Fiziksel Momentumu Sıfırlama
 local function clearPhysics(character)
     for _, part in ipairs(character:GetChildren()) do
         if part:IsA("BasePart") then
@@ -98,18 +99,38 @@ RunService.Heartbeat:Connect(function()
                     cooldown = true
 
                     local oldPosition = hrp.Position
-                    local desiredPosition = otherHrp.Position - (otherHrp.CFrame.LookVector * TELEPORT_DISTANCE)
+
+                    -- Bakış yönünü yatay eksende sıfırla
+                    local lookDir = otherHrp.CFrame.LookVector
+                    local flatLook = Vector3.new(lookDir.X, 0, lookDir.Z)
+                    if flatLook.Magnitude > 0 then
+                        flatLook = flatLook.Unit
+                    else
+                        flatLook = Vector3.new(0, 0, -1)
+                    end
+
+                    -- Hedef noktayı hesapla
+                    local desiredPosition = Vector3.new(
+                        otherHrp.Position.X - (flatLook.X * TELEPORT_DISTANCE),
+                        otherHrp.Position.Y,
+                        otherHrp.Position.Z - (flatLook.Z * TELEPORT_DISTANCE)
+                    )
 
                     local ignoreList = {char, player.Character}
                     local finalPosition = getSafePosition(oldPosition, desiredPosition, ignoreList)
 
-                    -- Işınlanmadan ÖNCE tüm fiziksel momentumu sıfırla
+                    -- Fizik temizliği
                     clearPhysics(char)
 
-                    -- Karakteri taşı ve bakış açısını eski konumuna kilitle
-                    hrp.CFrame = CFrame.lookAt(finalPosition, oldPosition)
+                    -- Karakterin eğilmesini önleyen bakış kilitli ışınlanma
+                    local lookTarget = Vector3.new(oldPosition.X, finalPosition.Y, oldPosition.Z)
 
-                    -- Işınlandıktan SONRA da sıfırla
+                    if (finalPosition - lookTarget).Magnitude > 0.1 then
+                        hrp.CFrame = CFrame.lookAt(finalPosition, lookTarget)
+                    else
+                        hrp.CFrame = CFrame.new(finalPosition)
+                    end
+
                     clearPhysics(char)
 
                     task.wait(COOLDOWN_TIME)
