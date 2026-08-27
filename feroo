@@ -1,14 +1,16 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
 
 local localPlayer = Players.LocalPlayer
 local enabled = false
 local cooldown = false
 
 -- Ayarlar
-local DETECTION_DISTANCE = 5        -- Algılama mesafesi (stud)
-local TELEPORT_DISTANCE = 5         -- Rakibin arkasına geçme mesafesi (stud)
+local DETECTION_DISTANCE = 7        -- Algılama mesafesi (stud)
+local TELEPORT_DISTANCE = 7         -- Hedef ışınlanma mesafesi (stud)
+local COOLDOWN_TIME = 0.01          -- Bekleme süresi (saniye)
 
 -- 1. Arayüzü (GUI) Oluşturma
 local guiParent = CoreGui
@@ -40,7 +42,6 @@ local uiCorner = Instance.new("UICorner")
 uiCorner.CornerRadius = UDim.new(0, 12)
 uiCorner.Parent = textButton
 
--- Butona Tıklama Olayı
 textButton.MouseButton1Click:Connect(function()
     enabled = not enabled
     if enabled then
@@ -52,7 +53,24 @@ textButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- 2. Ana Döngü (Işınlanma ve Açı Ayarı)
+-- Güvenli Konum Hesaplama (Raycast İle Engel Kontrolü)
+local function getSafePosition(startPos, targetPos, ignoreList)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = ignoreList
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.IgnoreWater = true
+
+    local direction = targetPos - startPos
+    local rayResult = Workspace:Raycast(startPos, direction, raycastParams)
+
+    if rayResult then
+        return rayResult.Position - (direction.Unit * 1.5)
+    end
+
+    return targetPos
+end
+
+-- 2. Ana Döngü
 RunService.Heartbeat:Connect(function()
     if not enabled or cooldown then return end
 
@@ -69,16 +87,15 @@ RunService.Heartbeat:Connect(function()
                 if distance <= DETECTION_DISTANCE then
                     cooldown = true
 
-                    -- A. Eski durduğun konumu kaydet
                     local oldPosition = hrp.Position
+                    local desiredPosition = otherHrp.Position - (otherHrp.CFrame.LookVector * TELEPORT_DISTANCE)
 
-                    -- B. Sana doğru gelen oyuncunun arkasındaki konumu hesapla
-                    local targetPosition = otherHrp.Position - (otherHrp.CFrame.LookVector * TELEPORT_DISTANCE)
+                    local ignoreList = {char, player.Character}
+                    local finalPosition = getSafePosition(oldPosition, desiredPosition, ignoreList)
 
-                    -- C. Yeni konuma ışınlan ve YÜZÜNÜ ESKİ KONUMUNA ÇEVİR
-                    hrp.CFrame = CFrame.lookAt(targetPosition, oldPosition)
+                    hrp.CFrame = CFrame.lookAt(finalPosition, oldPosition)
 
-                    task.wait(0.2)
+                    task.wait(COOLDOWN_TIME) -- 0.01 saniye bekleme
                     cooldown = false
                     break
                 end
