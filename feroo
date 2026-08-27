@@ -1,0 +1,90 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+local localPlayer = Players.LocalPlayer
+local enabled = false
+local cooldown = false
+
+-- Ayarlar
+local DETECTION_DISTANCE = 5        -- Algılama mesafesi (stud)
+local TELEPORT_DISTANCE = 5         -- Işınlanma mesafesi (stud)
+
+-- 1. Arayüzü (GUI) Oluşturma
+local guiParent = CoreGui
+if not pcall(function() return CoreGui:GetChildren() end) then
+    guiParent = localPlayer:WaitForChild("PlayerGui")
+end
+
+-- Eski GUI varsa temizle
+if guiParent:FindFirstChild("DeltaMobileGui") then
+    guiParent.DeltaMobileGui:Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DeltaMobileGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = guiParent
+
+local textButton = Instance.new("TextButton")
+textButton.Name = "ToggleButton"
+textButton.Size = UDim2.new(0, 130, 0, 50)
+textButton.Position = UDim2.new(0.75, 0, 0.15, 0) -- Ekranın sağ üst kısmı
+textButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0) -- Başlangıç: Kırmızı (Kapalı)
+textButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+textButton.TextSize = 16
+textButton.Font = Enum.Font.SourceSansBold
+textButton.Text = "Koruma: KAPALI"
+textButton.Parent = screenGui
+
+-- Butona şık köşe verme
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 12)
+uiCorner.Parent = textButton
+
+-- 2. Butona Tıklama Olayı (Aç/Kapat)
+textButton.MouseButton1Click:Connect(function()
+    enabled = not enabled
+    if enabled then
+        textButton.Text = "Koruma: AÇIK"
+        textButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Yeşil (Açık)
+    else
+        textButton.Text = "Koruma: KAPALI"
+        textButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0) -- Kırmızı (Kapalı)
+    end
+end)
+
+-- 3. Ana Döngü (Mesafe Kontrolü ve Işınlanma)
+RunService.Heartbeat:Connect(function()
+    if not enabled or cooldown then return end
+
+    local char = localPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local otherHrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if otherHrp then
+                local distance = (hrp.Position - otherHrp.Position).Magnitude
+
+                if distance <= DETECTION_DISTANCE then
+                    cooldown = true
+
+                    -- Yaklaşan oyuncunun ters yönünü hesapla
+                    local awayDirection = (hrp.Position - otherHrp.Position).Unit
+                    if awayDirection ~= awayDirection or awayDirection.Magnitude == 0 then
+                        awayDirection = -hrp.CFrame.LookVector
+                    end
+
+                    -- Işınlanmayı gerçekleştir
+                    hrp.CFrame = hrp.CFrame + (awayDirection * TELEPORT_DISTANCE)
+
+                    task.wait(0.15)
+                    cooldown = false
+                    break
+                end
+            end
+        end
+    end
+end)
