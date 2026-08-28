@@ -1,0 +1,285 @@
+-- [[ ANTI-TOXIC & PEACEFUL ZEN GUI - FULL LOCAL SCRIPT ]] --
+-- Konum: StarterPlayerScripts veya StarterGui (LocalScript)
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local TextChatService = game:GetService("TextChatService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+--------------------------------------------------------------------------------
+-- 1. DEĞİŞKENLER VE AYARLAR
+--------------------------------------------------------------------------------
+local Config = {
+	AntiToxicChat = true,
+	PersonalSpaceShield = false,
+	ShieldDistance = 5,
+	GhostedPlayers = {}
+}
+
+local WholesomeReplacements = {
+	["ez"] = "Harika harika bir oyundu! ✨",
+	["easy"] = "Çok eğlenceli bir maçtı! 💫",
+	["noob"] = "Herkes zamanla gelişir, harikasın! 🌟",
+	["trash"] = "İyi denemeydi, eline sağlık! ❤️",
+	["bad"] = "Çabalamak en güzel şeydir! 🍀",
+	["l"] = "GG WP! 🎉"
+}
+
+--------------------------------------------------------------------------------
+-- 2. GUI ARAYÜZÜ OLUŞTURMA (PROGRAMMATIC UI)
+--------------------------------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AntiToxicZenGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 360, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -180, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(28, 30, 38)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
+
+-- Title Bar
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -40, 0, 40)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "🕊️ Zen Guard | Anti-Toxic Suite"
+Title.TextColor3 = Color3.fromRGB(220, 225, 235)
+Title.TextSize = 16
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = MainFrame
+
+-- Close / Minimize Button
+local ToggleKeyHint = Instance.new("TextLabel")
+ToggleKeyHint.Size = UDim2.new(0, 80, 0, 30)
+ToggleKeyHint.Position = UDim2.new(1, -90, 0, 5)
+ToggleKeyHint.BackgroundTransparency = 1
+ToggleKeyHint.Text = "[RightShift]"
+ToggleKeyHint.TextColor3 = Color3.fromRGB(120, 125, 140)
+ToggleKeyHint.TextSize = 11
+ToggleKeyHint.Font = Enum.Font.Gotham
+ToggleKeyHint.Parent = MainFrame
+
+-- Scrolling Container
+local Container = Instance.new("ScrollingFrame")
+Container.Size = UDim2.new(1, -20, 1, -55)
+Container.Position = UDim2.new(0, 10, 0, 45)
+Container.BackgroundTransparency = 1
+Container.BorderSizePixel = 0
+Container.ScrollBarThickness = 4
+Container.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 8)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.Parent = Container
+
+--------------------------------------------------------------------------------
+-- HELPER: BUTON VE ARAYÜZ BİLEŞENİ ÜRETİCİSİ
+--------------------------------------------------------------------------------
+local function CreateToggleButton(text, defaultState, callback)
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0.95, 0, 0, 40)
+	button.BackgroundColor3 = defaultState and Color3.fromRGB(45, 125, 90) or Color3.fromRGB(40, 43, 54)
+	button.Text = (defaultState and "  [AÇIK] " or "  [KAPALI] ") .. text
+	button.TextColor3 = Color3.fromRGB(240, 240, 240)
+	button.Font = Enum.Font.GothamMedium
+	button.TextSize = 13
+	button.TextXAlignment = Enum.TextXAlignment.Left
+	button.AutoButtonColor = false
+	button.Parent = Container
+
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 8)
+	btnCorner.Parent = button
+
+	local state = defaultState
+	local db = false -- Anti-Bug Debounce
+
+	button.MouseButton1Click:Connect(function()
+		if db then return end
+		db = true
+		state = not state
+		
+		local targetColor = state and Color3.fromRGB(45, 125, 90) or Color3.fromRGB(40, 43, 54)
+		TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+		button.Text = (state and "  [AÇIK] " or "  [KAPALI] ") .. text
+		
+		pcall(callback, state)
+		task.wait(0.25)
+		db = false
+	end)
+
+	return button
+end
+
+local function CreateActionButton(text, color, callback)
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0.95, 0, 0, 40)
+	button.BackgroundColor3 = color
+	button.Text = text
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	button.Font = Enum.Font.GothamBold
+	button.TextSize = 13
+	button.AutoButtonColor = true
+	button.Parent = Container
+
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 8)
+	btnCorner.Parent = button
+
+	local db = false
+	button.MouseButton1Click:Connect(function()
+		if db then return end
+		db = true
+		pcall(callback)
+		task.wait(0.5)
+		db = false
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- 3. MODÜLLER VE MANTIK KATMANI
+--------------------------------------------------------------------------------
+
+-- [MODÜL 1] Anti-Toxic Chat Dönüştürücü (Client-Side Filter)
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+	TextChatService.OnIncomingChatMessage = function(message)
+		if not Config.AntiToxicChat then return end
+		local text = message.Text:lower()
+		
+		for toxicWord, wholesomeWord in pairs(WholesomeReplacements) do
+			if text:find("%f[%a]" .. toxicWord .. "%f[%A]") or text == toxicWord then
+				local properties = Instance.new("TextChatMessageProperties")
+				properties.Text = wholesomeWord
+				return properties
+			end
+		end
+	end
+end
+
+CreateToggleButton("Anti-Toxic Chat Dönüştürücü", Config.AntiToxicChat, function(newState)
+	Config.AntiToxicChat = newState
+end)
+
+-- [MODÜL 2] Kişisel Alan Kalkanı (Anti-Bodyblock)
+RunService.Heartbeat:Connect(function()
+	if not Config.PersonalSpaceShield then return end
+	
+	local char = LocalPlayer.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+	local myPos = char.HumanoidRootPart.Position
+
+	for _, otherPlayer in ipairs(Players:GetPlayers()) do
+		if otherPlayer ~= LocalPlayer and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			local otherChar = otherPlayer.Character
+			local otherRoot = otherChar.HumanoidRootPart
+			local dist = (myPos - otherRoot.Position).Magnitude
+
+			if dist < Config.ShieldDistance then
+				-- Yaklaşan oyuncunun çakışmasını (collision) geçici olarak kapat
+				for _, part in ipairs(otherChar:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
+			end
+		end
+	end
+end)
+
+CreateToggleButton("Kişisel Alan Kalkanı (Anti-Push)", Config.PersonalSpaceShield, function(newState)
+	Config.PersonalSpaceShield = newState
+end)
+
+-- [MODÜL 3] Zen / Sakinleşme Modu (Rage Guard)
+local ZenOverlay = Instance.new("Frame")
+ZenOverlay.Name = "ZenOverlay"
+ZenOverlay.Size = UDim2.new(1, 0, 1, 0)
+ZenOverlay.BackgroundColor3 = Color3.fromRGB(15, 20, 28)
+ZenOverlay.BackgroundTransparency = 1
+ZenOverlay.Visible = false
+ZenOverlay.Parent = ScreenGui
+
+local ZenText = Instance.new("TextLabel")
+ZenText.Size = UDim2.new(1, 0, 0, 60)
+ZenText.Position = UDim2.new(0, 0, 0.5, -30)
+ZenText.BackgroundTransparency = 1
+ZenText.Text = "Derin bir nefes al...\nHer şey yolunda. 🌿"
+ZenText.TextColor3 = Color3.fromRGB(180, 220, 200)
+ZenText.Font = Enum.Font.GothamMedium
+ZenText.TextSize = 22
+ZenText.Parent = ZenOverlay
+
+CreateActionButton("🧘 Zen Modunu Başlat (Sakinleş)", Color3.fromRGB(70, 90, 140), function()
+	ZenOverlay.Visible = true
+	TweenService:Create(ZenOverlay, TweenInfo.new(1), {BackgroundTransparency = 0.15}):Play()
+	task.wait(4)
+	local fadeOut = TweenService:Create(ZenOverlay, TweenInfo.new(1), {BackgroundTransparency = 1})
+	fadeOut:Play()
+	fadeOut.Completed:Connect(function()
+		ZenOverlay.Visible = false
+	end)
+end)
+
+-- [MODÜL 4] Auto-Positivity (Sohbete Pozitif Mesaj Yolla)
+CreateActionButton("✨ Sohbete Pozitif Enerji Ver", Color3.fromRGB(120, 70, 140), function()
+	local messages = {
+		"GG WP! Herkese iyi oyunlar dilerim! ✨",
+		"Güzel maçtı, elinize sağlık! 🌟",
+		"Pozitif kalın, harika gidiyorsunuz! 💫"
+	}
+	local randomMsg = messages[math.random(1, #messages)]
+	
+	if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		local generalChannel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+		if generalChannel then
+			generalChannel:SendAsync(randomMsg)
+		end
+	end
+end)
+
+-- [MODÜL 5] Ghosting / Mute Modülü (Seçili Oyuncuyu Saydam Yap)
+CreateActionButton("👻 Yakındaki Oyuncuları Saydamlaştır", Color3.fromRGB(90, 95, 110), function()
+	local myChar = LocalPlayer.Character
+	if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return end
+	
+	for _, otherPlayer in ipairs(Players:GetPlayers()) do
+		if otherPlayer ~= LocalPlayer and otherPlayer.Character then
+			local otherRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+			if otherRoot and (myChar.HumanoidRootPart.Position - otherRoot.Position).Magnitude <= 15 then
+				for _, part in ipairs(otherPlayer.Character:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.LocalTransparencyModifier = 0.8
+					end
+				end
+			end
+		end
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- 4. ARAYÜZ KONTROLÜ & KISAYOL (TOGGLE)
+--------------------------------------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.RightShift then
+		MainFrame.Visible = not MainFrame.Visible
+	end
+end)
