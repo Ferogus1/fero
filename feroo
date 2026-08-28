@@ -9,14 +9,15 @@ local enabled = false
 local cooldown = false
 local teleportCount = 0
 
--- Ayarlar
-local DETECTION_DISTANCE = 5        -- Algılama mesafesi (5 stud)
-local TELEPORT_DISTANCE = 5         -- Oto kaçış ışınlanma mesafesi (5 stud)
-local COOLDOWN_TIME = 0.04          -- Oto kaçış bekleme süresi
-local DASH_DISTANCE = 10            -- İleri ışınlanma mesafesi (10 stud)
+-- Ayarlar & Değişkenler
+local detectionDistance = 5         -- Başlangıç algılama mesafesi
+local baseCooldown = 0.04           -- Temel bekleme süresi
+local dashDistance = 10             -- Manuel ileri ışınlanma mesafesi
+local teamFilter = true             -- Takım filtresi
+local showRing = true               -- Menzil halkası
 
 -- ----------------------------------------------------
--- 1. Sürükleme (Drag) Fonksiyonu (Mobil & PC Uyumlu)
+-- 1. Sürükleme (Drag) Fonksiyonu
 -- ----------------------------------------------------
 local function makeDraggable(guiElement, dragHandle)
     dragHandle = dragHandle or guiElement
@@ -54,7 +55,33 @@ local function makeDraggable(guiElement, dragHandle)
 end
 
 -- ----------------------------------------------------
--- 2. GUI (Arayüz) Oluşturma
+-- 2. Görsel Menzil Halkası (Adornment Ring)
+-- ----------------------------------------------------
+local ringAdornment = Instance.new("CylinderHandleAdornment")
+ringAdornment.Name = "EvadeRangeRing"
+ringAdornment.Height = 0.05
+ringAdornment.Radius = detectionDistance
+ringAdornment.CFrame = CFrame.Angles(math.rad(90), 0, 0)
+ringAdornment.Color3 = Color3.fromRGB(0, 255, 150)
+ringAdornment.Transparency = 0.6
+ringAdornment.AlwaysOnTop = true
+ringAdornment.Visible = showRing
+
+local function updateRingParent()
+    if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        ringAdornment.Adornee = localPlayer.Character.HumanoidRootPart
+        ringAdornment.Parent = localPlayer.Character.HumanoidRootPart
+    end
+end
+
+localPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    updateRingParent()
+end)
+updateRingParent()
+
+-- ----------------------------------------------------
+-- 3. GUI (Arayüz) Oluşturma
 -- ----------------------------------------------------
 local guiParent = CoreGui
 if not pcall(function() return CoreGui:GetChildren() end) then
@@ -70,14 +97,14 @@ screenGui.Name = "DeltaControlGui"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = guiParent
 
--- A. Açma / Kapama Butonu (Ekranda Sürüklenebilir Küçük Buton)
+-- A. Açma/Kapama İkonu (Sürüklenebilir)
 local toggleGuiBtn = Instance.new("TextButton")
 toggleGuiBtn.Name = "ToggleGuiButton"
-toggleGuiBtn.Size = UDim2.new(0, 100, 0, 35)
+toggleGuiBtn.Size = UDim2.new(0, 110, 0, 35)
 toggleGuiBtn.Position = UDim2.new(0.05, 0, 0.2, 0)
 toggleGuiBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 toggleGuiBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleGuiBtn.TextSize = 14
+toggleGuiBtn.TextSize = 13
 toggleGuiBtn.Font = Enum.Font.SourceSansBold
 toggleGuiBtn.Text = "MENU [AÇ/KAPAT]"
 toggleGuiBtn.Parent = screenGui
@@ -85,14 +112,13 @@ toggleGuiBtn.Parent = screenGui
 local toggleCorner = Instance.new("UICorner")
 toggleCorner.CornerRadius = UDim.new(0, 8)
 toggleCorner.Parent = toggleGuiBtn
-
 makeDraggable(toggleGuiBtn)
 
--- B. Ana Menü Penceresi (Sürüklenebilir)
+-- B. Ana Menü Penceresi
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 200, 0, 160)
-mainFrame.Position = UDim2.new(0.7, 0, 0.2, 0)
+mainFrame.Size = UDim2.new(0, 220, 0, 270)
+mainFrame.Position = UDim2.new(0.65, 0, 0.15, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = true
@@ -102,7 +128,7 @@ local mainCorner = Instance.new("UICorner")
 mainCorner.CornerRadius = UDim.new(0, 12)
 mainCorner.Parent = mainFrame
 
--- Menü Başlık Çubuğu
+-- Menü Başlığı
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name = "TitleLabel"
 titleLabel.Size = UDim2.new(1, 0, 0, 30)
@@ -110,25 +136,22 @@ titleLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextSize = 14
 titleLabel.Font = Enum.Font.SourceSansBold
-titleLabel.Text = "Delta Script Menu"
+titleLabel.Text = "Delta Ultra Evade"
 titleLabel.Parent = mainFrame
 
 local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 12)
 titleCorner.Parent = titleLabel
-
 makeDraggable(mainFrame, titleLabel)
 
--- Menü Açma/Kapama İşlevi
 toggleGuiBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = not mainFrame.Visible
 end)
 
--- C. Oto Kaçış Butonu (Running: ON/OFF)
+-- C. Running ON/OFF Butonu
 local autoEvadeBtn = Instance.new("TextButton")
-autoEvadeBtn.Name = "AutoEvadeButton"
-autoEvadeBtn.Size = UDim2.new(0.9, 0, 0, 45)
-autoEvadeBtn.Position = UDim2.new(0.05, 0, 0.28, 0)
+autoEvadeBtn.Size = UDim2.new(0.9, 0, 0, 40)
+autoEvadeBtn.Position = UDim2.new(0.05, 0, 0.14, 0)
 autoEvadeBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 autoEvadeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoEvadeBtn.TextSize = 15
@@ -152,24 +175,135 @@ autoEvadeBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- D. 10 Stud İleri Işınlanma Butonu
+-- D. 10 Stud Işınlan Butonu
 local dashBtn = Instance.new("TextButton")
-dashBtn.Name = "DashButton"
-dashBtn.Size = UDim2.new(0.9, 0, 0, 45)
-dashBtn.Position = UDim2.new(0.05, 0, 0.62, 0)
+dashBtn.Size = UDim2.new(0.9, 0, 0, 40)
+dashBtn.Position = UDim2.new(0.05, 0, 0.31, 0)
 dashBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
 dashBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-dashBtn.TextSize = 15
+dashBtn.TextSize = 14
 dashBtn.Font = Enum.Font.SourceSansBold
-dashBtn.Text = "⚡ 10 Stud Işınlan"
+dashBtn.Text = "⚡ 10 Stud İleri Işınlan"
 dashBtn.Parent = mainFrame
 
 local dashCorner = Instance.new("UICorner")
 dashCorner.CornerRadius = UDim.new(0, 8)
 dashCorner.Parent = dashBtn
 
+-- E. Mesafe Ayarı (+ / -)
+local distLabel = Instance.new("TextLabel")
+distLabel.Size = UDim2.new(0.5, 0, 0, 35)
+distLabel.Position = UDim2.new(0.05, 0, 0.48, 0)
+distLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+distLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+distLabel.TextSize = 13
+distLabel.Font = Enum.Font.SourceSansBold
+distLabel.Text = "Menzil: " .. detectionDistance .. " Stud"
+distLabel.Parent = mainFrame
+
+local distCorner = Instance.new("UICorner")
+distCorner.CornerRadius = UDim.new(0, 8)
+distCorner.Parent = distLabel
+
+local minusBtn = Instance.new("TextButton")
+minusBtn.Size = UDim2.new(0.18, 0, 0, 35)
+minusBtn.Position = UDim2.new(0.57, 0, 0.48, 0)
+minusBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+minusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minusBtn.TextSize = 18
+minusBtn.Font = Enum.Font.SourceSansBold
+minusBtn.Text = "-"
+minusBtn.Parent = mainFrame
+
+local minusCorner = Instance.new("UICorner")
+minusCorner.CornerRadius = UDim.new(0, 8)
+minusCorner.Parent = minusBtn
+
+local plusBtn = Instance.new("TextButton")
+plusBtn.Size = UDim2.new(0.18, 0, 0, 35)
+plusBtn.Position = UDim2.new(0.77, 0, 0.48, 0)
+plusBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+plusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+plusBtn.TextSize = 18
+plusBtn.Font = Enum.Font.SourceSansBold
+plusBtn.Text = "+"
+plusBtn.Parent = mainFrame
+
+local plusCorner = Instance.new("UICorner")
+plusCorner.CornerRadius = UDim.new(0, 8)
+plusCorner.Parent = plusBtn
+
+minusBtn.MouseButton1Click:Connect(function()
+    if detectionDistance > 2 then
+        detectionDistance = detectionDistance - 1
+        distLabel.Text = "Menzil: " .. detectionDistance .. " Stud"
+        ringAdornment.Radius = detectionDistance
+    end
+end)
+
+plusBtn.MouseButton1Click:Connect(function()
+    if detectionDistance < 15 then
+        detectionDistance = detectionDistance + 1
+        distLabel.Text = "Menzil: " .. detectionDistance .. " Stud"
+        ringAdornment.Radius = detectionDistance
+    end
+end)
+
+-- F. Takım Filtresi Butonu
+local teamBtn = Instance.new("TextButton")
+teamBtn.Size = UDim2.new(0.9, 0, 0, 32)
+teamBtn.Position = UDim2.new(0.05, 0, 0.64, 0)
+teamBtn.BackgroundColor3 = Color3.fromRGB(40, 110, 40)
+teamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+teamBtn.TextSize = 12
+teamBtn.Font = Enum.Font.SourceSansBold
+teamBtn.Text = "Takım Filtresi: AÇIK"
+teamBtn.Parent = mainFrame
+
+local teamCorner = Instance.new("UICorner")
+teamCorner.CornerRadius = UDim.new(0, 8)
+teamCorner.Parent = teamBtn
+
+teamBtn.MouseButton1Click:Connect(function()
+    teamFilter = not teamFilter
+    if teamFilter then
+        teamBtn.Text = "Takım Filtresi: AÇIK"
+        teamBtn.BackgroundColor3 = Color3.fromRGB(40, 110, 40)
+    else
+        teamBtn.Text = "Takım Filtresi: KAPALI"
+        teamBtn.BackgroundColor3 = Color3.fromRGB(110, 40, 40)
+    end
+end)
+
+-- G. Menzil Halkası Toggle Butonu
+local ringBtn = Instance.new("TextButton")
+ringBtn.Size = UDim2.new(0.9, 0, 0, 32)
+ringBtn.Position = UDim2.new(0.05, 0, 0.78, 0)
+ringBtn.BackgroundColor3 = Color3.fromRGB(40, 110, 40)
+ringBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ringBtn.TextSize = 12
+ringBtn.Font = Enum.Font.SourceSansBold
+ringBtn.Text = "Halka: AÇIK"
+ringBtn.Parent = mainFrame
+
+local ringCorner = Instance.new("UICorner")
+ringCorner.CornerRadius = UDim.new(0, 8)
+ringCorner.Parent = ringBtn
+
+ringBtn.MouseButton1Click:Connect(function()
+    showRing = not showRing
+    ringAdornment.Visible = showRing
+    if showRing then
+        ringBtn.Text = "Halka: AÇIK"
+        ringBtn.BackgroundColor3 = Color3.fromRGB(40, 110, 40)
+    else
+        ringBtn.Text = "Halka: KAPALI"
+        ringBtn.BackgroundColor3 = Color3.fromRGB(110, 40, 40)
+    end
+end)
+
 -- ----------------------------------------------------
--- 3. Yardımcı Fizik ve Raycast Fonksiyonları
+-- 4. Yardımcı Fizik ve Raycast İşlevleri
 -- ----------------------------------------------------
 local function clearPhysics(character)
     for _, part in ipairs(character:GetChildren()) do
@@ -196,8 +330,54 @@ local function getSafePosition(startPos, targetPos, ignoreList)
     return targetPos
 end
 
+-- Akıllı Pozisyon Seçici (Kalabalık & Duvar Taraması)
+local function getBestEvadePosition(oldPos, targetHrp, baseDist, ignoreList, currentTargetPlayer)
+    local candidateAngles = {180, 135, -135, 90, -90, 45, -45}
+    local bestPos = nil
+    local lowestCrowdCount = 999
+
+    for _, angle in ipairs(candidateAngles) do
+        -- Açı dönüştürme
+        local rad = math.rad(angle)
+        local rotatedCFrame = targetHrp.CFrame * CFrame.Angles(0, rad, 0)
+        local dir = rotatedCFrame.LookVector
+
+        local rawTargetPos = Vector3.new(
+            targetHrp.Position.X + (dir.X * baseDist),
+            targetHrp.Position.Y,
+            targetHrp.Position.Z + (dir.Z * baseDist)
+        )
+
+        local safePos = getSafePosition(oldPos, rawTargetPos, ignoreList)
+
+        -- Bu noktanın 5 stud yakınındaki insan sayısını say
+        local crowdCount = 0
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= localPlayer and p ~= currentTargetPlayer and p.Character then
+                local pHrp = p.Character:FindFirstChild("HumanoidRootPart")
+                if pHrp and (pHrp.Position - safePos).Magnitude <= 5 then
+                    crowdCount = crowdCount + 1
+                end
+            end
+        end
+
+        -- Eğer etrafta hiç kimse yoksa bu en mükemmel açıdır, direkt seç!
+        if crowdCount == 0 then
+            return safePos
+        end
+
+        -- Aksi halde en az kalabalık olan açıyı hafızaya al
+        if crowdCount < lowestCrowdCount then
+            lowestCrowdCount = crowdCount
+            bestPos = safePos
+        end
+    end
+
+    return bestPos or (targetHrp.Position - (targetHrp.CFrame.LookVector * baseDist))
+end
+
 -- ----------------------------------------------------
--- 4. 10 Stud Işınlanma Mantığı
+-- 5. 10 Stud Dash (İleri Işınlanma)
 -- ----------------------------------------------------
 dashBtn.MouseButton1Click:Connect(function()
     local char = localPlayer.Character
@@ -206,7 +386,7 @@ dashBtn.MouseButton1Click:Connect(function()
 
     local startPos = hrp.Position
     local forwardDir = hrp.CFrame.LookVector
-    local desiredTarget = startPos + (forwardDir * DASH_DISTANCE)
+    local desiredTarget = startPos + (forwardDir * dashDistance)
 
     local safePos = getSafePosition(startPos, desiredTarget, {char})
 
@@ -216,7 +396,7 @@ dashBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ----------------------------------------------------
--- 5. Ana Döngü (Oto Kaçış Mantığı)
+-- 6. Ana Döngü (Akıllı Oto Kaçış)
 -- ----------------------------------------------------
 RunService.Heartbeat:Connect(function()
     if not enabled or cooldown then return end
@@ -227,17 +407,25 @@ RunService.Heartbeat:Connect(function()
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= localPlayer and player.Character then
+            -- Takım Filtresi Kontrolü
+            if teamFilter and player.Team ~= nil and player.Team == localPlayer.Team then
+                continue
+            end
+
             local otherHrp = player.Character:FindFirstChild("HumanoidRootPart")
-            if otherHrp then
+            local otherHum = player.Character:FindFirstChildOfClass("Humanoid")
+
+            -- Can ve Doğma Kalkanı (ForceField) Kontrolü
+            if otherHrp and otherHum and otherHum.Health > 0 and not player.Character:FindFirstChildOfClass("ForceField") then
                 local distance = (hrp.Position - otherHrp.Position).Magnitude
 
-                if distance <= DETECTION_DISTANCE then
+                if distance <= detectionDistance then
                     teleportCount = teleportCount + 1
                     
-                    -- Her 15. ışınlanmayı atla
+                    -- Her 15. ışınlanmayı atla (İnsan taklidi)
                     if teleportCount % 15 == 0 then
                         cooldown = true
-                        task.wait(COOLDOWN_TIME)
+                        task.wait(baseCooldown)
                         cooldown = false
                         break
                     end
@@ -246,25 +434,19 @@ RunService.Heartbeat:Connect(function()
 
                     local oldPosition = hrp.Position
 
-                    local lookDir = otherHrp.CFrame.LookVector
-                    local flatLook = Vector3.new(lookDir.X, 0, lookDir.Z)
-                    if flatLook.Magnitude > 0 then
-                        flatLook = flatLook.Unit
-                    else
-                        flatLook = Vector3.new(0, 0, -1)
-                    end
-
-                    local desiredPosition = Vector3.new(
-                        otherHrp.Position.X - (flatLook.X * TELEPORT_DISTANCE),
-                        otherHrp.Position.Y,
-                        otherHrp.Position.Z - (flatLook.Z * TELEPORT_DISTANCE)
-                    )
+                    -- Randomization (Bot gibi görünmeme & Anti-cheat atlatma)
+                    local randomDistOffset = math.random(-5, 5) / 10 -- ±0.5 stud rastgelelik
+                    local actualTeleportDist = math.clamp(detectionDistance + randomDistOffset, 3, 15)
+                    local randomCooldown = baseCooldown + (math.random(0, 20) / 1000) -- ~0.04s - 0.06s
 
                     local ignoreList = {char, player.Character}
-                    local finalPosition = getSafePosition(oldPosition, desiredPosition, ignoreList)
+
+                    -- Akıllı Yön & Kalabalık Taraması Yaparak En Uygun Noktayı Bul
+                    local finalPosition = getBestEvadePosition(oldPosition, otherHrp, actualTeleportDist, ignoreList, player)
 
                     clearPhysics(char)
 
+                    -- Bakış Yönü Kilitli Işınlanma
                     local lookTarget = Vector3.new(oldPosition.X, finalPosition.Y, oldPosition.Z)
 
                     if (finalPosition - lookTarget).Magnitude > 0.1 then
@@ -275,7 +457,7 @@ RunService.Heartbeat:Connect(function()
 
                     clearPhysics(char)
 
-                    task.wait(COOLDOWN_TIME)
+                    task.wait(randomCooldown)
                     cooldown = false
                     break
                 end
