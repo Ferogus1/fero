@@ -34,8 +34,8 @@ local spectatingPlayer = nil
 -- Dash Ayarları
 local dashEnabled = false
 local dashDistance = 20 -- Varsayılan Dash Mesafesi (Stud)
+local dashCooldown = 0.5 -- Min 0.2s, Max 2.0s
 local isDashing = false
-local dashCooldown = 0.5
 
 -- Whitelist Tablosu (UserId -> boolean)
 local whitelist = {}
@@ -388,7 +388,7 @@ local function performDash()
 
     isDashing = true
 
-    -- Yön Belirleme: Hareket yönü varsa oraya, yoksa baktığı yön (LookVector)
+    -- Yön Belirleme: MoveDirection varsa oraya, yoksa kameranın baktığı yön
     local moveDir = hum.MoveDirection
     local dashDir = (moveDir.Magnitude > 0) and moveDir or camera.CFrame.LookVector
     dashDir = Vector3.new(dashDir.X, 0, dashDir.Z).Unit
@@ -396,7 +396,7 @@ local function performDash()
     clearPhysics(char)
     local targetPos = hrp.Position + (dashDir * dashDistance)
 
-    -- Duvar İçi Raycast Kontrolü (Duvarın içine girmeyi engeller)
+    -- Duvar İçi Raycast Kontrolü
     local rayParams = RaycastParams.new()
     rayParams.FilterDescendantsInstances = getAllPlayerCharacters()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -410,7 +410,7 @@ local function performDash()
     playTeleportFX(targetPos)
     clearPhysics(char)
 
-    task.wait(dashCooldown)
+    task.wait(dashCooldown) -- Dinamik Ayarlanan Cooldown
     isDashing = false
 end
 
@@ -545,7 +545,7 @@ soundBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ======================================================
--- 7. TAB 2: STEALTH / HIDE BEHIND WALL (Geliştirildi)
+-- 7. TAB 2: STEALTH / HIDE BEHIND WALL
 -- ======================================================
 local hideBtn = Instance.new("TextButton")
 hideBtn.Size = UDim2.new(0.95, 0, 0, 34)
@@ -564,7 +564,7 @@ hideBtn.MouseButton1Click:Connect(function()
     hideBtn.BackgroundColor3 = autoHideEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(170, 0, 0)
 end)
 
--- Cooldown Selector (Min 0.5s - Max 5.0s)
+-- Hide Cooldown Selector (Min 0.5s - Max 5.0s)
 local cdLabel = Instance.new("TextLabel")
 cdLabel.Size = UDim2.new(0.5, 0, 0, 30)
 cdLabel.Position = UDim2.new(0, 0, 0, 44)
@@ -572,7 +572,7 @@ cdLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
 cdLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 cdLabel.TextSize = 11
 cdLabel.Font = Enum.Font.SourceSansBold
-cdLabel.Text = "Cooldown: " .. string.format("%.1f", autoHideCooldownTime) .. "s"
+cdLabel.Text = "Hide CD: " .. string.format("%.1f", autoHideCooldownTime) .. "s"
 cdLabel.Parent = stealthTab
 Instance.new("UICorner", cdLabel).CornerRadius = UDim.new(0, 8)
 
@@ -601,13 +601,13 @@ Instance.new("UICorner", cdPlusBtn).CornerRadius = UDim.new(0, 8)
 cdMinusBtn.MouseButton1Click:Connect(function()
     if autoHideCooldownTime > 0.5 then
         autoHideCooldownTime = autoHideCooldownTime - 0.5
-        cdLabel.Text = "Cooldown: " .. string.format("%.1f", autoHideCooldownTime) .. "s"
+        cdLabel.Text = "Hide CD: " .. string.format("%.1f", autoHideCooldownTime) .. "s"
     end
 end)
 cdPlusBtn.MouseButton1Click:Connect(function()
     if autoHideCooldownTime < 5.0 then
         autoHideCooldownTime = autoHideCooldownTime + 0.5
-        cdLabel.Text = "Cooldown: " .. string.format("%.1f", autoHideCooldownTime) .. "s"
+        cdLabel.Text = "Hide CD: " .. string.format("%.1f", autoHideCooldownTime) .. "s"
     end
 end)
 
@@ -730,12 +730,12 @@ espBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ======================================================
--- 10. TAB 5: MOVEMENT (FLY, CLICK TP & DASH)
+-- 10. TAB 5: MOVEMENT (DASH, FLY, CLICK TP)
 -- ======================================================
 
 -- Dash Toggle
 local dashToggleBtn = Instance.new("TextButton")
-dashToggleBtn.Size = UDim2.new(0.95, 0, 0, 32)
+dashToggleBtn.Size = UDim2.new(0.95, 0, 0, 30)
 dashToggleBtn.Position = UDim2.new(0, 0, 0, 5)
 dashToggleBtn.BackgroundColor3 = Color3.fromRGB(110, 40, 40)
 dashToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -754,8 +754,8 @@ end)
 
 -- Dash Distance Selector
 local dashDistLabel = Instance.new("TextLabel")
-dashDistLabel.Size = UDim2.new(0.5, 0, 0, 30)
-dashDistLabel.Position = UDim2.new(0, 0, 0, 42)
+dashDistLabel.Size = UDim2.new(0.5, 0, 0, 28)
+dashDistLabel.Position = UDim2.new(0, 0, 0, 40)
 dashDistLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
 dashDistLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 dashDistLabel.TextSize = 11
@@ -765,8 +765,8 @@ dashDistLabel.Parent = movementTab
 Instance.new("UICorner", dashDistLabel).CornerRadius = UDim.new(0, 8)
 
 local dashMinusBtn = Instance.new("TextButton")
-dashMinusBtn.Size = UDim2.new(0.2, 0, 0, 30)
-dashMinusBtn.Position = UDim2.new(0.52, 0, 0, 42)
+dashMinusBtn.Size = UDim2.new(0.2, 0, 0, 28)
+dashMinusBtn.Position = UDim2.new(0.52, 0, 0, 40)
 dashMinusBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 dashMinusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 dashMinusBtn.TextSize = 14
@@ -776,8 +776,8 @@ dashMinusBtn.Parent = movementTab
 Instance.new("UICorner", dashMinusBtn).CornerRadius = UDim.new(0, 8)
 
 local dashPlusBtn = Instance.new("TextButton")
-dashPlusBtn.Size = UDim2.new(0.2, 0, 0, 30)
-dashPlusBtn.Position = UDim2.new(0.74, 0, 0, 42)
+dashPlusBtn.Size = UDim2.new(0.2, 0, 0, 28)
+dashPlusBtn.Position = UDim2.new(0.74, 0, 0, 40)
 dashPlusBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 dashPlusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 dashPlusBtn.TextSize = 14
@@ -799,10 +799,57 @@ dashPlusBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Dash Cooldown Selector (Min 0.2s - Max 2.0s)
+local dashCdLabel = Instance.new("TextLabel")
+dashCdLabel.Size = UDim2.new(0.5, 0, 0, 28)
+dashCdLabel.Position = UDim2.new(0, 0, 0, 73)
+dashCdLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
+dashCdLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+dashCdLabel.TextSize = 11
+dashCdLabel.Font = Enum.Font.SourceSansBold
+dashCdLabel.Text = "Dash CD: " .. string.format("%.1f", dashCooldown) .. "s"
+dashCdLabel.Parent = movementTab
+Instance.new("UICorner", dashCdLabel).CornerRadius = UDim.new(0, 8)
+
+local dashCdMinusBtn = Instance.new("TextButton")
+dashCdMinusBtn.Size = UDim2.new(0.2, 0, 0, 28)
+dashCdMinusBtn.Position = UDim2.new(0.52, 0, 0, 73)
+dashCdMinusBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+dashCdMinusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+dashCdMinusBtn.TextSize = 14
+dashCdMinusBtn.Font = Enum.Font.SourceSansBold
+dashCdMinusBtn.Text = "-"
+dashCdMinusBtn.Parent = movementTab
+Instance.new("UICorner", dashCdMinusBtn).CornerRadius = UDim.new(0, 8)
+
+local dashCdPlusBtn = Instance.new("TextButton")
+dashCdPlusBtn.Size = UDim2.new(0.2, 0, 0, 28)
+dashCdPlusBtn.Position = UDim2.new(0.74, 0, 0, 73)
+dashCdPlusBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+dashCdPlusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+dashCdPlusBtn.TextSize = 14
+dashCdPlusBtn.Font = Enum.Font.SourceSansBold
+dashCdPlusBtn.Text = "+"
+dashCdPlusBtn.Parent = movementTab
+Instance.new("UICorner", dashCdPlusBtn).CornerRadius = UDim.new(0, 8)
+
+dashCdMinusBtn.MouseButton1Click:Connect(function()
+    if dashCooldown > 0.25 then
+        dashCooldown = math.clamp(dashCooldown - 0.1, 0.2, 2.0)
+        dashCdLabel.Text = "Dash CD: " .. string.format("%.1f", dashCooldown) .. "s"
+    end
+end)
+dashCdPlusBtn.MouseButton1Click:Connect(function()
+    if dashCooldown < 1.95 then
+        dashCooldown = math.clamp(dashCooldown + 0.1, 0.2, 2.0)
+        dashCdLabel.Text = "Dash CD: " .. string.format("%.1f", dashCooldown) .. "s"
+    end
+end)
+
 -- Fly Toggle
 local flyBtn = Instance.new("TextButton")
-flyBtn.Size = UDim2.new(0.95, 0, 0, 32)
-flyBtn.Position = UDim2.new(0, 0, 0, 78)
+flyBtn.Size = UDim2.new(0.95, 0, 0, 30)
+flyBtn.Position = UDim2.new(0, 0, 0, 106)
 flyBtn.BackgroundColor3 = Color3.fromRGB(110, 40, 40)
 flyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 flyBtn.TextSize = 12
@@ -848,8 +895,8 @@ end)
 
 -- Click TP Toggle
 local clickTpBtn = Instance.new("TextButton")
-clickTpBtn.Size = UDim2.new(0.95, 0, 0, 32)
-clickTpBtn.Position = UDim2.new(0, 0, 0, 115)
+clickTpBtn.Size = UDim2.new(0.95, 0, 0, 30)
+clickTpBtn.Position = UDim2.new(0, 0, 0, 141)
 clickTpBtn.BackgroundColor3 = Color3.fromRGB(110, 40, 40)
 clickTpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 clickTpBtn.TextSize = 12
@@ -884,14 +931,45 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 -- ======================================================
--- 11. TAB 6: SPECTATE
+-- 11. TAB 6: SPECTATE (GELİŞTİRİLMİŞ & RELOAD BUTONLU)
 -- ======================================================
+
+local reloadSpecBtn = Instance.new("TextButton")
+reloadSpecBtn.Size = UDim2.new(0.95, 0, 0, 28)
+reloadSpecBtn.Position = UDim2.new(0, 0, 0, 5)
+reloadSpecBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+reloadSpecBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+reloadSpecBtn.TextSize = 11
+reloadSpecBtn.Font = Enum.Font.SourceSansBold
+reloadSpecBtn.Text = "🔄 Reload Player List"
+reloadSpecBtn.Parent = spectateTab
+Instance.new("UICorner", reloadSpecBtn).CornerRadius = UDim.new(0, 8)
+
 local specList = Instance.new("ScrollingFrame")
-specList.Size = UDim2.new(0.95, 0, 0, 130)
-specList.Position = UDim2.new(0, 0, 0, 5)
+specList.Size = UDim2.new(0.95, 0, 0, 115)
+specList.Position = UDim2.new(0, 0, 0, 38)
 specList.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+specList.ScrollBarThickness = 4
 specList.Parent = spectateTab
 Instance.new("UICorner", specList).CornerRadius = UDim.new(0, 8)
+
+local resetCamBtn = Instance.new("TextButton")
+resetCamBtn.Size = UDim2.new(0.95, 0, 0, 28)
+resetCamBtn.Position = UDim2.new(0, 0, 0, 158)
+resetCamBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+resetCamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+resetCamBtn.TextSize = 11
+resetCamBtn.Font = Enum.Font.SourceSansBold
+resetCamBtn.Text = "Stop Spectating (Reset Cam)"
+resetCamBtn.Parent = spectateTab
+Instance.new("UICorner", resetCamBtn).CornerRadius = UDim.new(0, 8)
+
+local function resetCamera()
+    if localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        camera.CameraSubject = localPlayer.Character:FindFirstChildOfClass("Humanoid")
+        spectatingPlayer = nil
+    end
+end
 
 local function refreshSpectateList()
     specList:ClearAllChildren()
@@ -920,25 +998,20 @@ local function refreshSpectateList()
         end
     end
 end
-refreshSpectateList()
 
-local resetCamBtn = Instance.new("TextButton")
-resetCamBtn.Size = UDim2.new(0.95, 0, 0, 30)
-resetCamBtn.Position = UDim2.new(0, 0, 0, 140)
-resetCamBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
-resetCamBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-resetCamBtn.TextSize = 12
-resetCamBtn.Font = Enum.Font.SourceSansBold
-resetCamBtn.Text = "Stop Spectating (Reset)"
-resetCamBtn.Parent = spectateTab
-Instance.new("UICorner", resetCamBtn).CornerRadius = UDim.new(0, 8)
+reloadSpecBtn.MouseButton1Click:Connect(refreshSpectateList)
+resetCamBtn.MouseButton1Click:Connect(resetCamera)
 
-resetCamBtn.MouseButton1Click:Connect(function()
-    if localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        camera.CameraSubject = localPlayer.Character:FindFirstChildOfClass("Humanoid")
-        spectatingPlayer = nil
+-- Oyuncu çıktığında otomatik reset ve yenileme
+Players.PlayerRemoving:Connect(function(p)
+    if spectatingPlayer == p then
+        resetCamera()
     end
+    refreshSpectateList()
 end)
+
+Players.PlayerAdded:Connect(refreshSpectateList)
+refreshSpectateList()
 
 -- ======================================================
 -- 12. TAB 7: CONFIG (SAVE & LOAD FILE)
@@ -978,6 +1051,7 @@ saveBtn.MouseButton1Click:Connect(function()
             espEnabled = espEnabled,
             dashEnabled = dashEnabled,
             dashDistance = dashDistance,
+            dashCooldown = dashCooldown,
             whitelist = whitelist
         }
         pcall(function()
@@ -1004,6 +1078,7 @@ loadBtn.MouseButton1Click:Connect(function()
                 espEnabled = cfg.espEnabled or false
                 dashEnabled = cfg.dashEnabled or false
                 dashDistance = cfg.dashDistance or 20
+                dashCooldown = cfg.dashCooldown or 0.5
                 whitelist = cfg.whitelist or {}
 
                 autoEvadeBtn.Text = autoEvadeEnabled and "Auto Evade: ON" or "Auto Evade: OFF"
@@ -1011,7 +1086,7 @@ loadBtn.MouseButton1Click:Connect(function()
                 
                 hideBtn.Text = autoHideEnabled and "Auto Hide Behind Wall: ON" or "Auto Hide Behind Wall: OFF"
                 hideBtn.BackgroundColor3 = autoHideEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(170, 0, 0)
-                cdLabel.Text = "Cooldown: " .. string.format("%.1f", autoHideCooldownTime) .. "s"
+                cdLabel.Text = "Hide CD: " .. string.format("%.1f", autoHideCooldownTime) .. "s"
 
                 distLabel.Text = "Range: " .. detectionDistance .. " Studs"
                 ringAdornment.Radius = detectionDistance
@@ -1021,8 +1096,10 @@ loadBtn.MouseButton1Click:Connect(function()
                 dashToggleBtn.BackgroundColor3 = dashEnabled and Color3.fromRGB(40, 110, 40) or Color3.fromRGB(110, 40, 40)
                 screenDashBtn.Visible = dashEnabled
                 dashDistLabel.Text = "Dash Dist: " .. dashDistance .. " Studs"
+                dashCdLabel.Text = "Dash CD: " .. string.format("%.1f", dashCooldown) .. "s"
 
                 refreshWhitelistGui()
+                refreshSpectateList()
                 updateESP()
 
                 loadBtn.Text = "✅ Config Loaded!"
@@ -1053,7 +1130,7 @@ RunService.Heartbeat:Connect(function()
                     local distance = (hrp.Position - otherHrp.Position).Magnitude
 
                     -- ----------------------------------------------------
-                    -- A) AUTO HIDE BEHIND WALL (Geliştirildi)
+                    -- A) AUTO HIDE BEHIND WALL
                     -- ----------------------------------------------------
                     if autoHideEnabled and not hideCooldown and distance <= 25 then
                         if hasLineOfSight(player.Character, hrp.Position) then
@@ -1065,7 +1142,7 @@ RunService.Heartbeat:Connect(function()
                                 playTeleportFX(coverSpot)
                                 clearPhysics(char)
 
-                                task.wait(autoHideCooldownTime) -- Ayarlanabilir Cooldown Süresi
+                                task.wait(autoHideCooldownTime)
                                 hideCooldown = false
                                 break
                             end
@@ -1090,20 +1167,15 @@ RunService.Heartbeat:Connect(function()
                             local finalPosition
 
                             if tpBehindAttacker then
-                                -- Düşmanın/Saldıranın SENİN AYARLADIĞIN RANGE (detectionDistance) KADAR ARKASINA IŞINLANIR
                                 finalPosition = (otherHrp.CFrame * CFrame.new(0, 0, detectionDistance)).Position
                             else
-                                -- Düşmandan zıt yöne doğru kaç
                                 local incomingVector = (hrp.Position - otherHrp.Position)
                                 local evadeDir = incomingVector.Magnitude > 0 and incomingVector.Unit or -otherHrp.CFrame.LookVector
                                 finalPosition = hrp.Position + (evadeDir * detectionDistance)
                             end
 
                             clearPhysics(char)
-
-                            -- Düşmana dönük bakacak şekilde konumlandır
                             hrp.CFrame = CFrame.lookAt(finalPosition, otherHrp.Position)
-
                             playTeleportFX(finalPosition)
                             clearPhysics(char)
 
