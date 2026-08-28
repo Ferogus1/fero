@@ -19,7 +19,7 @@ local hideCooldown = false
 
 local cooldown = false
 local teleportCount = 0
-local detectionDistance = 6
+local detectionDistance = 6 -- Varsayılan Işınlanma ve Algılama Menzili
 local baseCooldown = 0.04
 
 local soundEnabled = true
@@ -81,7 +81,6 @@ local function hasLineOfSight(observerChar, targetPos)
     local direction = targetPos - observerHrp.Position
     local result = Workspace:Raycast(observerHrp.Position, direction, raycastParams)
 
-    -- Raycast engelle karşılaşmadıysa arada duvar yoktur, oyuncu seni görüyordur
     return result == nil
 end
 
@@ -97,14 +96,12 @@ local function findCoverBehindWall(myHrp, enemyHrp)
     for _, offset in ipairs(offsets) do
         local testPos = myHrp.Position + offset
 
-        -- 1. Engelin (duvarın) arkasında mı kontrol et
         local rayParams = RaycastParams.new()
         rayParams.FilterDescendantsInstances = {enemyHrp.Parent, localPlayer.Character}
         rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
         local result = Workspace:Raycast(enemyHrp.Position, (testPos - enemyHrp.Position), rayParams)
-        if result then -- Bir duvara çarptı, yani enemyHrp burayı göremez!
-            -- 2. Buraya giden yol açık mı? (Harita dışı veya duvar içi olmasın)
+        if result then
             local selfParams = RaycastParams.new()
             selfParams.FilterDescendantsInstances = {localPlayer.Character}
             selfParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -440,7 +437,7 @@ minusBtn.MouseButton1Click:Connect(function()
     end
 end)
 plusBtn.MouseButton1Click:Connect(function()
-    if detectionDistance < 15 then
+    if detectionDistance < 25 then
         detectionDistance = detectionDistance + 1
         distLabel.Text = "Range: " .. detectionDistance .. " Studs"
         ringAdornment.Radius = detectionDistance
@@ -493,7 +490,7 @@ hideInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
 hideInfo.TextSize = 11
 hideInfo.Font = Enum.Font.SourceSans
 hideInfo.TextWrapped = true
-hideInfo.Text = "📌 Mantık: Whitelist'te olmayan bir oyuncu seni doğrudan gördüğünde (görüş açısına girdiğinde) sistem seni otomatik olarak en yakın duvarın arkasına ışınlar."
+hideInfo.Text = "📌 Mantık: Whitelist'te olmayan bir oyuncu seni doğrudan gördüğünde sistem seni otomatik olarak en yakın duvarın arkasına ışınlar."
 hideInfo.Parent = stealthTab
 Instance.new("UICorner", hideInfo).CornerRadius = UDim.new(0, 8)
 
@@ -826,7 +823,7 @@ loadBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ======================================================
--- 12. MAIN LOOP (Evade, TP Behind Attacker & Wall Stealth)
+-- 12. MAIN LOOP (Evade, Dynamic TP Behind & Wall Stealth)
 -- ======================================================
 RunService.Heartbeat:Connect(function()
     local char = localPlayer.Character
@@ -836,7 +833,7 @@ RunService.Heartbeat:Connect(function()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= localPlayer and player.Character then
             
-            -- Whitelist Kontrolü (Whitelist'teki oyuncular sistemi tetiklemez!)
+            -- Whitelist Kontrolü
             if not whitelist[player.UserId] then
                 local otherHrp = player.Character:FindFirstChild("HumanoidRootPart")
                 local otherHum = player.Character:FindFirstChildOfClass("Humanoid")
@@ -845,7 +842,7 @@ RunService.Heartbeat:Connect(function()
                     local distance = (hrp.Position - otherHrp.Position).Magnitude
 
                     -- ----------------------------------------------------
-                    -- A) AUTO HIDE BEHIND WALL (Biri Seni Görünce Saklanma)
+                    -- A) AUTO HIDE BEHIND WALL
                     -- ----------------------------------------------------
                     if autoHideEnabled and not hideCooldown and distance <= 25 then
                         if hasLineOfSight(player.Character, hrp.Position) then
@@ -857,7 +854,7 @@ RunService.Heartbeat:Connect(function()
                                 playTeleportFX(coverSpot)
                                 clearPhysics(char)
 
-                                task.wait(2.5) -- 2.5 Saniye Cooldown
+                                task.wait(2.5)
                                 hideCooldown = false
                                 break
                             end
@@ -865,13 +862,12 @@ RunService.Heartbeat:Connect(function()
                     end
 
                     -- ----------------------------------------------------
-                    -- B) AUTO EVADE & TP BEHIND ATTACKER (Kaçış & Arkaya Geçme)
+                    -- B) AUTO EVADE & DYNAMIC RANGE TP BEHIND
                     -- ----------------------------------------------------
                     if autoEvadeEnabled and not cooldown then
                         if distance <= detectionDistance and isPlayerInDetectionZone(hrp, otherHrp) then
                             teleportCount = teleportCount + 1
 
-                            -- Her 15 ışınlanmada 1 defa kısa es ver (Bug önleyici)
                             if teleportCount % 15 == 0 then
                                 cooldown = true
                                 task.wait(baseCooldown * 2)
@@ -883,8 +879,8 @@ RunService.Heartbeat:Connect(function()
                             local finalPosition
 
                             if tpBehindAttacker then
-                                -- Düşmanın/Saldıranın TAM 2.5 BLOK ARKASINA ışınlan
-                                finalPosition = (otherHrp.CFrame * CFrame.new(0, 0, 2.5)).Position
+                                -- Düşmanın/Saldıranın SENİN AYARLADIĞIN RANGE (detectionDistance) KADAR ARKASINA IŞINLANIR
+                                finalPosition = (otherHrp.CFrame * CFrame.new(0, 0, detectionDistance)).Position
                             else
                                 -- Düşmandan zıt yöne doğru kaç
                                 local incomingVector = (hrp.Position - otherHrp.Position)
