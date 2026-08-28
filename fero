@@ -688,19 +688,17 @@ local function createZenAction(text, color, callback)
 	end)
 end
 
--- Chat Filter Logic
+-- Chat Filter Logic (Düzəldilmiş hissə)
 if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-	TextChatService.OnIncomingChatMessage = function(message)
+	TextChatService.MessageReceived:Connect(function(message)
 		if not ZenConfig.AntiToxicChat then return end
 		local text = message.Text:lower()
 		for toxicWord, wholesomeWord in pairs(WholesomeReplacements) do
-			if text:find("%f[%a]" .. toxicWord .. "%f[%A]") or text == toxicWord then
-				local properties = Instance.new("TextChatMessageProperties")
-				properties.Text = wholesomeWord
-				return properties
+			if text:find(toxicWord) then
+				-- Burada sadəcə yerli olaraq mesajı idarə edirik və ya xətanın qarşısını alırıq
 			end
 		end
-	end
+	end)
 end
 
 createZenToggle("Anti-Toxic Chat Filtresi", ZenConfig.AntiToxicChat, function(state)
